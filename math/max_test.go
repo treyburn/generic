@@ -1,6 +1,7 @@
-package generic
+package math
 
 import (
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/constraints"
 	"testing"
 )
@@ -30,9 +31,7 @@ func TestMax(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			tc := test
 			got := Max(tc.x, tc.y)
-			if got != tc.want {
-				t.Error()
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 
@@ -40,9 +39,7 @@ func TestMax(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			tc := test
 			got := Max(tc.x, tc.y)
-			if got != tc.want {
-				t.Error()
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

@@ -1,4 +1,4 @@
-package generic
+package math
 
 import "golang.org/x/exp/constraints"
 

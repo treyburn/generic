@@ -1,2 +1,2 @@
 # generic
-A small collection of useful Go generic functions
+A small collection of algorithms in Go using generics
