@@ -62,7 +62,7 @@ func (lru *LRUCache[K, V]) popTail() *doublyLinkedList[K, V] {
 func (lru *LRUCache[K, V]) Get(key K) (V, error) {
 	v, ok := lru.cache[key]
 	if !ok {
-		return *new(V), ErrNotFound // this returns the zero value of type V - would it be better to return an error here?
+		return *new(V), ErrNotFound
 	}
 	lru.moveToHead(v)
 
