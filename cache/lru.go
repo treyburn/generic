@@ -1,93 +1,96 @@
 package cache
 
-import constant "github.com/treyburn/generic/const"
+import (
+	"github.com/treyburn/generic/constant"
+	"github.com/treyburn/generic/list"
+	"sync"
+)
 
 const ErrNotFound = constant.Err("key not found")
-
-type doublyLinkedList[K comparable, V any] struct {
-	key   K
-	value V
-	next  *doublyLinkedList[K, V]
-	prev  *doublyLinkedList[K, V]
-}
 
 type LRUCache[K comparable, V any] struct {
 	cap  int
 	size int
 
-	cache map[K]*doublyLinkedList[K, V]
+	mu sync.Mutex
 
-	head *doublyLinkedList[K, V]
-	tail *doublyLinkedList[K, V]
+	cache map[K]*list.DoublyLinkedWithKey[K, V]
+
+	head *list.DoublyLinkedWithKey[K, V]
+	tail *list.DoublyLinkedWithKey[K, V]
 }
 
-func NewLRU[K comparable, V any](capacity int) LRUCache[K, V] {
-	c := make(map[K]*doublyLinkedList[K, V], capacity)
+func NewLRU[K comparable, V any](capacity int) *LRUCache[K, V] {
+	c := make(map[K]*list.DoublyLinkedWithKey[K, V], capacity)
 
-	head := doublyLinkedList[K, V]{}
-	tail := doublyLinkedList[K, V]{}
-	head.next = &tail
-	tail.prev = &head
+	head := list.DoublyLinkedWithKey[K, V]{}
+	tail := list.DoublyLinkedWithKey[K, V]{}
+	head.Next = &tail
+	tail.Prev = &head
 
-	return LRUCache[K, V]{cap: capacity, size: 0, cache: c, head: &head, tail: &tail}
+	return &LRUCache[K, V]{cap: capacity, size: 0, cache: c, head: &head, tail: &tail}
 }
 
-func (lru *LRUCache[K, V]) addNode(node *doublyLinkedList[K, V]) {
-	node.prev = lru.head
-	node.next = lru.head.next
+func (lru *LRUCache[K, V]) addNode(node *list.DoublyLinkedWithKey[K, V]) {
+	node.Prev = lru.head
+	node.Next = lru.head.Next
 
-	lru.head.next.prev = node
-	lru.head.next = node
+	lru.head.Next.Prev = node
+	lru.head.Next = node
 }
 
-func (lru *LRUCache[K, V]) removeNode(node *doublyLinkedList[K, V]) {
-	prev := node.prev
-	next := node.next
+func (lru *LRUCache[K, V]) removeNode(node *list.DoublyLinkedWithKey[K, V]) {
+	prev := node.Prev
+	next := node.Next
 
-	prev.next = next
-	next.prev = prev
+	prev.Next = next
+	next.Prev = prev
 }
 
-func (lru *LRUCache[K, V]) moveToHead(node *doublyLinkedList[K, V]) {
+func (lru *LRUCache[K, V]) moveToHead(node *list.DoublyLinkedWithKey[K, V]) {
 	lru.removeNode(node)
 	lru.addNode(node)
 }
 
-func (lru *LRUCache[K, V]) popTail() *doublyLinkedList[K, V] {
-	last := lru.tail.prev
+func (lru *LRUCache[K, V]) popTail() *list.DoublyLinkedWithKey[K, V] {
+	last := lru.tail.Prev
 	lru.removeNode(last)
 	return last
 }
 
 func (lru *LRUCache[K, V]) Get(key K) (V, error) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	v, ok := lru.cache[key]
 	if !ok {
 		return *new(V), ErrNotFound
 	}
 	lru.moveToHead(v)
 
-	return v.value, nil
+	return v.Value, nil
 }
 
 func (lru *LRUCache[K, V]) Put(key K, value V) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	dll, ok := lru.cache[key]
 	if !ok {
-		dll = &doublyLinkedList[K, V]{
-			key:   key,
-			value: value,
-			prev:  nil,
-			next:  nil,
+		dll = &list.DoublyLinkedWithKey[K, V]{
+			Key:   key,
+			Value: value,
+			Prev:  nil,
+			Next:  nil,
 		}
 		lru.addNode(dll)
 		lru.size++
 		lru.cache[key] = dll
 		if lru.size > lru.cap {
 			last := lru.popTail()
-			delete(lru.cache, last.key)
+			delete(lru.cache, last.Key)
 			lru.size--
 		}
 	} else {
-		dll.value = value
+		dll.Value = value
 		lru.moveToHead(dll)
 	}
 }
